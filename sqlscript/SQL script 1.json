@@ -2,7 +2,7 @@
 	"name": "SQL script 1",
 	"properties": {
 		"content": {
-			"query": "CREATE TABLE [dbo].[reviewalabama]\n(\n    col1 int NOT NULL,\n    user_id INT,\n    name VARCHAR,\n    time DATE,\n    rating INT,\n    text VARCHAR,\n    pics VARCHAR,\n    resp VARCHAR,\n    gamp_id VARCHAR\n)\nWITH\n(\n    DISTRIBUTION = HASH (col1),\n    CLUSTERED COLUMNSTORE INDEX\n)\nGO\n",
+			"query": "CREATE TABLE [dbo].[reviewalabama]\n(\n    col1 int NOT NULL,\n    user_id INT,\n    name VARCHAR,\n    time DATE,\n    rating INT,\n    text VARCHAR,\n    pics VARCHAR,\n    resp VARCHAR,\n    gmap_id VARCHAR\n)\nWITH\n(\n    DISTRIBUTION = HASH (col1),\n    CLUSTERED COLUMNSTORE INDEX\n)\nGO\n",
 			"metadata": {
 				"language": "sql"
 			},

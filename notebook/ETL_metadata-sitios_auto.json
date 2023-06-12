@@ -1,0 +1,1074 @@
+{
+	"name": "ETL_metadata-sitios_auto",
+	"properties": {
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "aspooldatumtech",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "9364fbab-54a1-4444-839f-b2bee64ec073"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/205b4693-e5cf-4596-8def-f3c7513778be/resourceGroups/pfdatumtech/providers/Microsoft.Synapse/workspaces/synapsedatumtechanalisis/bigDataPools/aspooldatumtech",
+				"name": "aspooldatumtech",
+				"type": "Spark",
+				"endpoint": "https://synapsedatumtechanalisis.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/aspooldatumtech",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.3",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "3552a2cb-e045-4416-8000-cd22cdd771d1",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"### Importamos las librerias necesarias para realizar nuestro ETL:"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "af9c6956-c65a-4fdf-a334-f9dfa284d985",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"from pyspark.sql.functions import concat_ws, col, sum, lower, regexp_extract, substring, split, expr, trim"
+				],
+				"execution_count": 1
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "e19e84bb-b97d-4545-a656-b65e52f5fa0e",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"### Creacion de tabla `processed_files_metadata` para mantener el registro de los archivos ya procesados."
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "3ce9ed63-47a6-424d-9a8f-bec1cc80527a",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"spark.sql(\"CREATE TABLE IF NOT EXISTS processed_files_metadata (file_name STRING) USING DELTA\")"
+				],
+				"execution_count": 2
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "b232a5bd-90aa-475a-a6e4-803c37024d11",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"### Obtenemos la lista de archivos en ADLS."
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "b90cbc61-42ad-439a-a2f9-9ecd3513ae8d",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"adls_files = dbutils.fs.ls(\"abfss://datumtech@datalakedatumtech.dfs.core.windows.net\")\n",
+					"display(adls_files)"
+				],
+				"execution_count": 6
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Importar la biblioteca spark\r\n",
+					"from pyspark.sql import SparkSession\r\n",
+					"\r\n",
+					"# Crear una instancia de SparkSession\r\n",
+					"spark = SparkSession.builder.getOrCreate()\r\n",
+					"\r\n",
+					"# Obtener la lista de carpetas\r\n",
+					"folder_list = spark._jvm.org.apache.hadoop.fs.FileSystem.get(spark._jsc.hadoopConfiguration()) \\\r\n",
+					"    .listStatus(spark._jvm.org.apache.hadoop.fs.Path(f\"abfss://datumtech.blob.core.windows.net/\"))\r\n",
+					"\r\n",
+					"# Imprimir el nombre de las carpetas\r\n",
+					"for folder in folder_list:\r\n",
+					"    print(folder.getPath().getName())"
+				],
+				"execution_count": 14
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "7590116d-d7c4-4030-b2db-c5f037de4e71",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"### Creamos un variable `new_files` que contiene los archivos que no estan en ADLS."
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "4952e931-aeb0-4500-b39b-894655a86af8",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"processed_files = spark.sql(\"SELECT file_name FROM processed_files_metadata\").toPandas()[\"file_name\"].tolist()\n",
+					"\n",
+					"new_files = [file for file in adls_files if file.name not in processed_files]"
+				],
+				"execution_count": 0
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "947295fe-45bc-4221-9f69-ca0668e5081a",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"### Podemos ver que archivos ya estan procesados en la tabla `processed_files_metadata`"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "3573ff47-7e58-4d7b-a838-91a35f82a5b0",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"#spark.sql(\"SELECT * FROM processed_files_metadata\").show()"
+				],
+				"execution_count": 0
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "999d8908-3428-4a24-98ab-2de9dee9c966",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"### Podemos ver que archivos no estan procesados aun."
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "319a3530-59ed-4d9a-9fd4-0a40c10cdadb",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"#print(new_files)"
+				],
+				"execution_count": 0
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "75125273-566b-45ce-b37e-0284a8b48794",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"#display(new_files)"
+				],
+				"execution_count": 0
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "b9f94f5e-b412-4a7f-a680-ccac57088491",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"#new_files[0][1].rstrip(\"/\")"
+				],
+				"execution_count": 0
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "09bbff77-bdf5-494b-aa27-3f133d3650e4",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"### Creamos la funcion `etl` que realiza todo el proceso y devuelve el dataframe en formato parquet a la tabla silver corrrespondiente a los datos ya procesados. Tambien definimos una variable necesaria para hacer un filtrado mas adelante."
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "e1fffc50-6c67-447a-96c3-815feb2d690d",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"# Variable con categorias a filtrar\n",
+					"category = [\n",
+					"    'burger', 'burgers', 'hamburger', 'hamburgers' 'hot dog', 'steakhouse', 'lunch', 'motel', 'patisserie', 'pizza', 'deli', 'diner', 'dinner', 'icecream', 'ice cream', 'hotel', 'hotels', 'seafood','cookie', 'crab house', 'cupcake', 'chocolate', 'churreria', 'cocktail', 'cocktails', 'coffee', 'coffees' 'tea', 'restaurant', 'restaurats', 'chesse', 'charcuterie', 'cafe', 'cafes', 'BBQ', 'bagle', 'bakery' 'bakerys', 'bar', 'bars', 'bar & grill', 'barbacue', 'beer' 'bistro', 'pasteleria', 'pastelerias', 'breakfast', 'brunch', 'buffet', 'burrito', 'cafeteria', 'cafeterias', 'cake', 'cakes', 'food', 'wine', 'wineries',\n",
+					"    'lunch']"
+				],
+				"execution_count": 17
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "60781467-0b5a-4eac-a7e3-d77f53395a09",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"\n",
+					"def etl(file):\n",
+					"    \n",
+					"    # Definimos las rutas:\n",
+					"    path_raw=f\"abfss://datumtech@datalakedatumtech.dfs.core.windows.net/GoogleMaps/metadata-sitios/{file}\"\n",
+					"    path_bronze = f\"abfss://datumtech@datalakedatumtech.dfs.core.windows.net/Bronze/GoogleMapsBronze/metadata-sitios-Bronze/{file}-bronze\"\n",
+					"    path_silver = f\"abfss://datumtech@datalakedatumtech.dfs.core.windows.net/Silver/GoogleMapsSilver/metadata-sitios-Silver/{file}-silver\"\n",
+					"\n",
+					"    # Cargamos el archivo desde ADLS. Nos quedamos solo con las columnas consideradas para el proyecto:\n",
+					"    df_raw = spark.read.format(\"json\").option(\"multiline\", True).load(path_raw).select('address', 'avg_rating', 'category', 'gmap_id', 'latitude', 'longitude', 'name', 'num_of_reviews', 'url')\n",
+					"     \n",
+					"    # Guardamos el DataFrame df_raw en la tabla bronze correspondiente a los datos en crudo o poco procesados en Azure Data Lake con un formato parquet ideal para manejar altos volumenes de datos.\n",
+					"    df_raw.write.format(\"parquet\").save(path_bronze)\n",
+					"        \n",
+					"    # Cargamos el archivo desde la tabla bronze en Azure Data Lake en un DataFrame.\n",
+					"    df_metadata = spark.read.format(\"parquet\").load(path_bronze)\n",
+					"        \n",
+					"    # Utilizamos la función concat_ws para obtener los valores del array de la columna 'category' concatenados en el mismo registro\n",
+					"    df_metadata = df_metadata.withColumn('values_concatenados', concat_ws(', ', df_metadata.category))  \n",
+					"\n",
+					"    # Eliminamos la columna \"category\" del DataFrame\n",
+					"    df_metadata = df_metadata.drop(\"category\")\n",
+					"\n",
+					"    # Renombra la columna \"values_concatenados\" a \"nueva_columna\"\n",
+					"    df_metadata = df_metadata.withColumnRenamed(\"values_concatenados\", \"category\")    \n",
+					"\n",
+					"    # Eliminar los duplicados\n",
+					"    df_metadata = df_metadata.dropDuplicates()\n",
+					"\n",
+					"    # Rellenamos valores vacíos o nulos en las columnas 'address', 'name' y 'url'. A pesar de no tener nulos en url, dejamos planteado el codigo para usar el notebook en jobs posteriores\n",
+					"    # Eliminamos los registros donde 'avg_rating', 'gmap_id', 'latitude', 'longitude', 'num_of_reviews' y 'category' son nulos o vacios.\n",
+					"    df_metadata = df_metadata.fillna('Unknown', subset=['address', 'name'])\n",
+					"    df_metadata = df_metadata.na.drop(subset=['avg_rating', 'gmap_id', 'latitude', 'longitude', 'num_of_reviews', 'category']) \n",
+					"    \n",
+					"    # Filtramos de la columna category las que sean necesarias para el proyecto.\n",
+					"    filtro = expr(\"lower(category)\").rlike(r\"\\b(\" + \"|\".join(category) + r\")\\b\")\n",
+					"    df_metadata = df_metadata.filter(filtro)\n",
+					"\n",
+					"    # Creamos la columna 'state' extrayendo el estado de la columna 'address'\n",
+					"    df_metadata = df_metadata.withColumn('state', regexp_extract(df_metadata['address'], r',\\s*([^,]+)$', 1))\n",
+					"    df_metadata = df_metadata.withColumn('state', substring(df_metadata['state'], 1, 2))\n",
+					"\n",
+					"    # Guardamos el DataFrame df_metadata en la tabla silver correspondiente a los datos procesados en Azure Data Lake.\n",
+					"    return df_metadata.write.format(\"parquet\").save(path_silver)\n",
+					"    "
+				],
+				"execution_count": 18
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"etl(\"metadata1\")"
+				],
+				"execution_count": 19
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "45ca0f1e-c9ea-41f5-860f-3371d71fad5d",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"### Iteramos sobre cada archivo sin procesar."
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "e97045d1-6c7a-4bcb-86ab-c765f478c4d2",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"for file in new_files:\n",
+					"    etl(file.name.rstrip(\"/\"))"
+				],
+				"execution_count": 0
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "1b5de4c7-c23f-4032-b8e9-5442e40e4b0f",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"### Agregamos a la tabla `processed_files_metadata` los archivos ya procesados."
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "2dfc0dd7-7d0f-4818-9f0d-de05fc7101f6",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"new_files_df = spark.createDataFrame([(file.name,) for file in new_files], [\"file_name\"])\n",
+					"new_files_df.write.format(\"delta\").mode(\"append\").saveAsTable(\"processed_files_metadata\")"
+				],
+				"execution_count": 0
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "python"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%pyspark\r\n",
+					"df = spark.read.load('abfss://datumtech@datalakedatumtech.dfs.core.windows.net/user.parquet', format='parquet')\r\n",
+					"display(df.limit(10))"
+				],
+				"execution_count": 33
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "4a6b8f72-c660-4786-b21b-262621429f74",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"\n",
+					"df_metadata_silver = spark.read.format(\"parquet\").load(\"abfss://datumcontainer@datumtechstorage.dfs.core.windows.net/Silver/GoogleMapsSilver/metadata-sitios-Silver/metadata1-silver\")\n",
+					"#display(df_metadata_silver)\n",
+					""
+				],
+				"execution_count": 31
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "e29f3d41-d4b7-48e8-a7d4-466975a51511",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"df_metadata_silver.count()"
+				],
+				"execution_count": 0
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"### Prueba de creacion de bbdd y tabla en sqlpool\r\n",
+					""
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from pyspark.sql import SparkSession\r\n",
+					"\r\n",
+					"# Crear la sesión de Spark\r\n",
+					"spark = SparkSession.builder \\\r\n",
+					"    .appName(\"Guardar en tabla Synapse\") \\\r\n",
+					"    .getOrCreate()\r\n",
+					"\r\n",
+					"# Leer el archivo parquet desde Data Lake\r\n",
+					"df = spark.read.format(\"parquet\").load(f\"abfss://datumtech@datalakedatumtech.dfs.core.windows.net/Silver/GoogleMapsSilver/metadata-sitios-Silver/metadata-silver\")\r\n",
+					"\r\n",
+					"# Crear una vista temporal del DataFrame\r\n",
+					"df.createOrReplaceTempView(\"mi_tabla_temporal\")\r\n",
+					"\r\n",
+					"# Guardar el DataFrame en una tabla en Synapse\r\n",
+					"database_name = \"sqldatumtechpool\"\r\n",
+					"table_name = \"nombre_tabla\"\r\n",
+					"\r\n",
+					"spark.sql(f\"CREATE DATABASE IF NOT EXISTS {database_name}\")\r\n",
+					"spark.sql(f\"USE {database_name}\")\r\n",
+					"\r\n",
+					"spark.sql(f\"CREATE TABLE IF NOT EXISTS {table_name} USING DELTA AS SELECT * FROM mi_tabla_temporal\")\r\n",
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"nuid": "c305e2f1-15b8-43bc-8b1e-ae45365f58e4",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"###  Guardamos el DataFrame en una tabla Delta, primero necesitamos crear una base de datos y una tabla que lo contenga"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "8d0e6732-d9d0-4b8c-b671-106c80e93352",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"spark.sql(\"CREATE DATABASE datumtech\")"
+				],
+				"execution_count": 23
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "b31a3afc-d72c-4aa9-b867-b4eb91aaeb14",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"spark.sql(\"USE datumtech\")"
+				],
+				"execution_count": 0
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "56c837c5-0be7-448d-901e-d884248dff5d",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"df_metadata_silver.write.format(\"delta\").mode(\"overwrite\").saveAsTable(\"business_google\")"
+				],
+				"execution_count": 0
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "efc99d89-7bad-4187-abcf-47e484d46754",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"databases = spark.catalog.listDatabases()\n",
+					"print(databases)"
+				],
+				"execution_count": 21
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "26e4052e-24de-421c-a626-6c2c08ed1764",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"spark.sql(\"SHOW DATABASES\").show()"
+				],
+				"execution_count": 0
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"implicitDf": true,
+							"rowLimit": 10000
+						},
+						"nuid": "4c9bc472-328a-409f-b269-02426b050864",
+						"showTitle": false,
+						"title": ""
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"SHOW DATABASES"
+				],
+				"execution_count": 25
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"implicitDf": true,
+							"rowLimit": 10000
+						},
+						"nuid": "511064da-484c-4555-9c0b-cf62436db9e7",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"%sql\n",
+					"USE datumtech"
+				],
+				"execution_count": 0
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"implicitDf": true,
+							"rowLimit": 10000
+						},
+						"nuid": "92f13423-1294-489a-83da-08db1c9c57ca",
+						"showTitle": false,
+						"title": ""
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"SHOW TABLES"
+				],
+				"execution_count": 26
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"implicitDf": true,
+							"rowLimit": 10000
+						},
+						"nuid": "8ea92746-8e36-43e0-a6df-94fc45c8e953",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"%sql\n",
+					"SELECT * FROM business_google\n",
+					"LIMIT(20);"
+				],
+				"execution_count": 0
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"implicitDf": true,
+							"rowLimit": 10000
+						},
+						"nuid": "03a28897-936c-49e1-8147-35787ca8fe93",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"%sql\n",
+					"DESCRIBE DATABASE datumtech;"
+				],
+				"execution_count": 0
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"implicitDf": true,
+							"rowLimit": 10000
+						},
+						"nuid": "77921545-d8a4-4657-b2d2-a22dd35f553e",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"%sql\n",
+					"DESCRIBE TABLE business_google;"
+				],
+				"execution_count": 0
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "ff629741-cace-4a0d-94ed-476f9c6f0054",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"### Podemos verificar que, efectivamente esten registrados los archivos ya procesados."
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "793d5dee-6b48-4949-a242-44b891b18d9b",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"#spark.sql(\"SELECT * FROM processed_files_metadata\").show()"
+				],
+				"execution_count": 0
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "e069d029-6178-43a1-91d8-c496905db21b",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"#### Para comprobar que todo se haya ejecutado de manera correcta, podemos traer cualquier archivo de la tabla silver y hacer algunas verificaciones."
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "14a56ad2-25ae-42e7-9095-34bbfed14f99",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"# Funcion para cargar el archivo desde la tabla correspondiente al estado de los datos en Azure Data Lake en un DataFrame.\n",
+					"'''def load_from(file, level):\n",
+					"    path= f\"abfss://datumcontainer@datumtechstorage.dfs.core.windows.net/{level}/GoogleMaps{level}/metadata-sitios-{level}/{file}-{level.lower()}\"\n",
+					"    df = spark.read.format(\"parquet\").load(path)\n",
+					"    return df'''"
+				],
+				"execution_count": 0
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "266ce4d7-5dec-4403-93bb-756db86c19dd",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"# Cambiando ...new_files[<valor de la fila en la tabla>][1]... podras cargar algun archivo de los ya procesados de la tabla silver.\n",
+					"#df = load_from(new_files[0][1].rstrip(\"/\"), \"Silver\")"
+				],
+				"execution_count": 0
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "985abc9e-ad21-45bf-bacc-a34d5b2d3af1",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"#display(df)"
+				],
+				"execution_count": 0
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "73cec735-66dd-4b16-8a71-abc5ad38f2a8",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"#df.count()"
+				],
+				"execution_count": 0
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "76a101ca-0bbf-4b98-93bc-aa9068291bc3",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"### Podemos verificar si hay nulos en algun archivo en la tabla silver."
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "704b7ffd-91fe-42a6-b1f6-661d412d746d",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"# Funcion para el conteo de nulos del dataframe.\n",
+					"'''def null_counts (df):\n",
+					"    counts = df.select([sum(col(c).isNull().cast(\"integer\")).alias(c) for c in df.columns])\n",
+					"    return counts.show()'''"
+				],
+				"execution_count": 0
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"application/vnd.databricks.v1+cell": {
+						"cellMetadata": {
+							"byteLimit": 2048000,
+							"rowLimit": 10000
+						},
+						"nuid": "f135b019-6319-42b7-af36-cb888a5521b6",
+						"showTitle": false,
+						"title": ""
+					}
+				},
+				"source": [
+					"# Vemos que columnas poseen nulos y en que cantidad.\n",
+					"#nulls = null_counts(df)"
+				],
+				"execution_count": 0
+			}
+		]
+	}
+}

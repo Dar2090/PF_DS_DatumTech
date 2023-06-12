@@ -1,0 +1,17 @@
+{
+	"name": "SQL script prueba",
+	"properties": {
+		"content": {
+			"query": "-- Crear la tabla en SQL Data Warehouse\n\nCREATE TABLE business_google (\n    address VARCHAR(100),\n    avg_rating FLOAT,\n    gmap_id VARCHAR(100),\n    latitude FLOAT,\n    longitude FLOAT,\n    name VARCHAR(100),\n    count_reviews BIGINT,\n    url VARCHAR(100),\n    category VARCHAR(100),\n    state VARCHAR(100)\n);\n",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "sqldatumtechpool",
+				"poolName": "sqldatumtechpool"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}

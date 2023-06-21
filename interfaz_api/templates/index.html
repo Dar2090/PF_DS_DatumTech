@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Personalized recommendations for your tastes</title>
+    <!-- CSS de Bootstrap -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <!-- Estilo personalizado -->
+    <style>
+      body {
+        /* Color de fondo */
+        background-color: #333;
+        /* Color del texto */
+        color: #fff;
+        /* Espacio alrededor del contenido */
+        padding: 20px;
+      }
+
+      .container {
+        /* Fondo oscuro */
+        background-color: rgba(0, 0, 0, 0.8);
+        /* Borde redondeado */
+        border-radius: 10px;
+        /* Espacio interno */
+        padding: 20px;
+      }
+
+      h1, h2 {
+        /* Estilo de fuente y margen inferior */
+        font-family: "Arial", sans-serif;
+        margin-bottom: 10px;
+      }
+
+      p {
+        /* Margen inferior */
+        margin-bottom: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="text-center">
+        <!-- Logo con la URL y tamaño -->
+        <img src="https://raw.githubusercontent.com/AnndrezRivera/interfaz_api/main/dataset/Logo_v1.png" alt="Logo" width="100" height="115">
+      </div>
+      <h1>DatumSearch</h1>
+      <!-- Mensaje de bienvenida -->
+      <p>Thank you for choosing Datum Tech's recommendation model. With this service, you will be able to discover the best places to visit in your state, from restaurants and nightclubs to hotels and more. We invite you to explore the app with what you like best.</p>
+      <h1>Instructions:</h1>
+      <p>DatumSearch is easy and convenient to use, just follow these simple instructions. If you want recommendations strongly based on the characteristics you are looking for, use 'Search by taste', select the state and category, and you're done. If you prefer nearby sites, use 'Search for nearby places', select the state and category, and enjoy.</p>
+      <h2>Recommended categories:</h2>
+    <div class="row">
+      <div class="col-xs-6">
+        <ul>
+          <li>Food</li>
+          <li>Burger</li>
+          <li>Pizza</li>
+        </ul>
+      </div>
+      <div class="col-xs-6">
+        <ul>
+          <li>Restaurant</li>
+          <li>Pub</li>
+          <li>Hotel</li>
+        </ul>
+      </div>
+    </div>
+      <h2>Search by taste</h2>
+      <!-- Estilos de formulario de Bootstrap -->
+      <form method="post" class="form-inline">
+        <div class="form-group">
+          <label for="state">State:</label>
+          <select id="state" name="state" class="form-control">
+            {% for state in states %}
+              <option value="{{ state }}">{{ state }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="categories">Categories:</label>
+          <input type="text" id="categories" name="categories" class="form-control" placeholder="Enter categories">
+        </div>
+        <input type="submit" value="Submit" class="btn btn-primary">
+      </form>
+      <h2>Search for nearby places</h2>
+      <!-- Estilos de formulario de Bootstrap -->
+      <form method="post" action="/lugares_cercanos" class="form-inline">
+        <div class="form-group">
+          <label for="state">State:</label>
+          <select id="state" name="state" class="form-control">
+            {% for state in states %}
+              <option value="{{ state }}">{{ state }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="categories">Categories:</label>
+          <input type="text" id="categories" name="categories" class="form-control" placeholder="Enter categories">
+        </div>
+        <input type="submit" value="Submit" class="btn btn-primary">
+      </form>
+    </div>
+  </body>
+</html>

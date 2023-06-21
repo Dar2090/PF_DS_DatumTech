@@ -1,4 +1,4 @@
-# <h1 align="center">![The company](_src\DATUMTECH.jpg)</h1>
+# <h1 align="center">![The company](_src/DATUMTECH.jpg)</h1>
 
 # <h1 align="center"> **`Maximizar el impacto y la relevancia del turismo gastronómico, en el sector de la industria turística.`** </h1>
 
@@ -53,20 +53,20 @@ Utilizamos la metodología SCRUM como enfoque ágil de trabajo, apoyándonos en 
 
 Los KPIs son herramientas esenciales para la gestión y el control efectivos, ya que brindan una visión clara y medible del desempeño y rendimiento de la organización. Para este proyecto se plantearon los siguientes:
 
-![kpis](_src\kpis.png)
+![kpis](_src/kpis.png)
 
 
 # **Stack tecnológico** 
 
-![imagen](_src\stacktencnologico.png)
+![imagen](_src/stacktencnologico.png)
 
 # **Diagrama de entidad relación**
 
-![imagen](_src\diagrama.png)
+![imagen](_src/diagrama.png)
 
 # **Automatización**
 
-![imagen](_src\automatizacion.png)
+![imagen](_src/automatizacion.png)
 
 # **Modelo de recomendacion**
 

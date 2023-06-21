@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Results</title>
+    <!-- CSS de Bootstrap -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <!-- Estilo personalizado -->
+    <style>
+      body {
+        /* Color de fondo */
+        background-color: #333;
+        /* Color del texto */
+        color: #fff;
+        /* Espacio alrededor del contenido */
+        padding: 20px;
+      }
+
+      .container {
+        /* Fondo oscuro */
+        background-color: rgba(0, 0, 0, 0.8);
+        /* Borde redondeado */
+        border-radius: 10px;
+        /* Espacio interno */
+        padding: 20px;
+      }
+
+      h1, h2 {
+        /* Estilo de fuente y margen inferior */
+        font-family: "Arial", sans-serif;
+        margin-bottom: 10px;
+      }
+
+      p {
+        /* Margen inferior */
+        margin-bottom: 20px;
+      }
+
+      /* Estilos CSS para mejorar la apariencia */
+      .result {
+        margin-bottom: 20px;
+        padding: 10px;
+        background-color: #555;
+        border-radius: 5px;
+      }
+
+      .result h3 {
+        margin-top: 0;
+      }
+
+      .result p {
+        margin-bottom: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Results</h1>
+      {% if results %}
+        {% for result in results %}
+          <div class="result">
+            <h3>{{ result.name }}</h3>
+            <p><strong>Address:</strong> {{ result.address }}</p>
+            <p><strong>Average Rating:</strong> {{ result.avg_rating }}</p>
+            <p><strong>Categories:</strong> {{ result.categories }}</p>
+            <p><strong>Attributes:</strong> {{ result.attributes }}</p>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p>No results found.</p>
+      {% endif %}
+    </div>
+  </body>
+</html>

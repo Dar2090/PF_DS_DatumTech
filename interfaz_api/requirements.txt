@@ -1,0 +1,10 @@
+Flask
+Jinja2
+requests
+gunicorn
+fastapi
+python-multipart
+uvicorn
+fastparquet
+pandas
+numpy
